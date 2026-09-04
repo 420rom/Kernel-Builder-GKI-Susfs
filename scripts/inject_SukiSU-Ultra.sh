@@ -80,6 +80,38 @@ else
     cd ..
 fi
 
+# ---------------------------------------------------------
+# SukiSU-Ultra 6.12+ LSM Hook API Fix
+# ---------------------------------------------------------
+echo ">>> Checking for Linux 6.12+ LSM API Mismatch in SukiSU-Ultra..."
+# Dynamically extract kernel version since it's not exported to this script
+K_VER=$(grep "^VERSION =" common/Makefile | tr -d ' ' | cut -d'=' -f2)
+K_PATCH=$(grep "^PATCHLEVEL =" common/Makefile | tr -d ' ' | cut -d'=' -f2)
+
+if [ "$K_VER" = "6" ] && [ "$K_PATCH" -ge "12" ]; then
+    LSM_HOOK_FILE="common/drivers/kernelsu/hook/lsm_hook.c"
+
+    if [ -f "$LSM_HOOK_FILE" ] && grep -q 'security_add_hooks' "$LSM_HOOK_FILE"; then
+        echo "  -> Kernel 6.12+ detected. Disarming deprecated LSM hook registration..."
+        # Neutralize the hook call while using the variable to prevent compiler warnings
+        sed -i 's/security_add_hooks.*/(void)ksu_hooks;/g' "$LSM_HOOK_FILE"
+        echo "  -> lsm_hook.c runtime panic trap bypassed!"
+    else
+        echo "  -> LSM hook is already updated or file missing. Skipping."
+    fi
+else
+    echo "  -> Kernel $K_VER.$K_PATCH detected. Legacy LSM string hook is perfectly valid."
+fi
+
+# ---------------------------------------------------------
+# SukiSU-Ultra Upstream Bug Fix: kernel_umount.c
+# ---------------------------------------------------------
+UMOUNT_FILE="common/drivers/kernelsu/feature/kernel_umount.c"
+if [ -f "$UMOUNT_FILE" ] && grep -q 'kernel_umount_feature_set' "$UMOUNT_FILE"; then
+    echo ">>> Patching undeclared kernel_umount_feature_set to NULL in SukiSU-Ultra..."
+    sed -i 's/kernel_umount_feature_set/NULL/g' "$UMOUNT_FILE"
+fi
+
 echo "  -> Target Tag: $CALCULATED_TAG"
 echo "  -> Target Hash: $UPSTREAM_HASH"
 echo "  -> Target Count: $CALCULATED_COUNT"

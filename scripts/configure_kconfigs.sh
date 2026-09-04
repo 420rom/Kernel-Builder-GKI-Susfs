@@ -1,53 +1,58 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Configuration: Toggle custom Kconfig integration via ENV (Defaults to false)
 WITH_CUSTOM=${WITH_CUSTOM:-false}
-
-# Define the source fragment relative to the script execution point
 FRAGMENT_SRC="$(pwd)/tools/custom.fragment"
+BASE_VER=${BASE_VER:-}
 
-echo "=== Configuring Kconfigs & Fragments ==="
+echo "=== Configuring Kconfigs & ABI Neutralization for Kernel $BASE_VER ==="
 
 cd kernel_workspace
 
-echo ">>> Neutralizing ABI protected exports lists..."
-for f in common/android/abi_gki_protected_exports*; do
-  [ -f "$f" ] && > "$f"
+# 1. NEUTRALIZE LEGACY ABI PROTECTED EXPORTS (modpost bypass for 5.10-6.6)
+for f in common/android/abi_gki_protected_exports* android/abi_gki_protected_exports*; do
+    [ -f "$f" ] && > "$f" || true
 done
 
+cd common
+
+# 2. NEUTRALIZE STRICT SYMBOL LISTS (modpost bypass for older Bazel)
+# Note: module trimming is handled globally via --notrim in build_kernel.sh
+case "$BASE_VER" in
+    5.15|6.1|6.6)
+        echo ">>> Disabling strict ABI mode in BUILD.bazel for $BASE_VER..."
+        sed -i -E 's/(["\x27]?kmi_symbol_list_strict_mode["\x27]?[[:space:]]*[:=][[:space:]]*)True/\1False/g' BUILD.bazel
+        ;;
+    *)
+        echo ">>> Kleaf >= 6.12 handles ABI bypass natively via CLI. Skipping strict mode sed."
+        ;;
+esac
+
+# 3. INTEGRATE CUSTOM KCONFIG FRAGMENT
 if [ "$WITH_CUSTOM" = "true" ]; then
     if [ ! -f "$FRAGMENT_SRC" ]; then
-        echo "[-] Error: Fragment file not found at $FRAGMENT_SRC"
+        echo "[-] Error: Fragment not found at $FRAGMENT_SRC"
         exit 1
     fi
 
-    echo ">>> Integrating Kconfig Configurations from $FRAGMENT_SRC..."
-    cd common
-    
-    # Check if we are in a modern Bazel ecosystem
-    if [ -f "BUILD.bazel" ]; then
-        echo ">>> Modern Bazel detected: Injecting via post_defconfig_fragments..."
-        
-        # Copy the static fragment into the Bazel package boundary
-        cp "$FRAGMENT_SRC" custom_fragment
-        
-        # Inject fragment targeting into the Bazel build rules
-        echo 'exports_files(["custom_fragment"])' >> BUILD.bazel
-        sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["custom_fragment"],' BUILD.bazel
-        
-        # Exclude the untracked fragment from standard git tracking status
-        echo "custom_fragment" >> .git/info/exclude
-
-    else
-        echo ">>> Legacy Make detected (5.10 or older): Copying fragment..."
-        cp "$FRAGMENT_SRC" arch/arm64/configs/custom_legacy.fragment
-    fi
-    
-    cd ..
-else
-    echo ">>> Skipping custom Kconfig configuration..."
+    case "$BASE_VER" in
+        5.10)
+            echo ">>> Injecting Legacy 5.10 Kconfig Fragment..."
+            cp "$FRAGMENT_SRC" arch/arm64/configs/custom_legacy.fragment
+            ;;
+        5.15|6.1)
+            echo ">>> Injecting Bazel 5.15 to 6.1 Kconfig Fragment..."
+            cp "$FRAGMENT_SRC" custom_fragment
+            sed -i '/name = "kernel_aarch64",/a \    post_defconfig_fragments = ["custom_fragment"],' BUILD.bazel
+            ;;
+        *) 
+            # 6.6+
+            echo ">>> Injecting Bazel 6.6+ Kconfig Fragment..."
+            cp "$FRAGMENT_SRC" custom_fragment
+            sed -i '/"kernel_aarch64": {/a \        "defconfig_fragments": ["custom_fragment"],' BUILD.bazel
+            ;;
+    esac
 fi
 
-cd ..
-echo ">>> Kconfig configuration phase complete."
+cd ../..
+echo ">>> Configuration complete."
