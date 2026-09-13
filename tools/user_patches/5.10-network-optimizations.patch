@@ -1,3 +1,16 @@
+diff --git a/net/sched/Kconfig b/net/sched/Kconfig
+index 9c4a80fce..e399db992 100644
+--- a/net/sched/Kconfig
++++ b/net/sched/Kconfig
+@@ -280,6 +280,7 @@ config NET_SCH_FQ_CODEL
+ 
+ config NET_SCH_CAKE
+ 	tristate "Common Applications Kept Enhanced (CAKE)"
++	default y
+ 	help
+ 	  Say Y here if you want to use the Common Applications Kept Enhanced
+ 	  (CAKE) queue management algorithm.
+ 
 diff --git a/net/ipv4/Kconfig b/net/ipv4/Kconfig
 index 23b06063e..15d17209e 100644
 --- a/net/ipv4/Kconfig
