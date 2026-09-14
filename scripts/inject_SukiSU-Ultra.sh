@@ -103,6 +103,18 @@ else
     echo "  -> Kernel $K_VER.$K_PATCH detected. Legacy LSM string hook is perfectly valid."
 fi
 
+# ---------------------------------------------------------
+# SukiSU-Ultra Universal Linker Bug Fix (sucompat)
+# ---------------------------------------------------------
+echo ">>> [HOTFIX] Purging all dead sucompat hooks injected by SukiSU-Ultra..."
+# SukiSU-Ultra deleted sucompat.c from their build but forgot to update setup.sh.
+# We must globally strip all injected sucompat calls across the entire kernel tree 
+# to prevent ld.lld undefined symbol crashes on legacy branches (5.10, 6.1, 6.6).
+if [ -d "common/fs" ] && [ -d "common/kernel" ]; then
+    find common/fs common/kernel -type f -name "*.c" -exec sed -i '/_sucompat/d' {} +
+    echo "  -> Sucompat hooks successfully eradicated."
+fi
+
 echo "  -> Target Tag: $CALCULATED_TAG"
 echo "  -> Target Hash: $UPSTREAM_HASH"
 echo "  -> Target Count: $CALCULATED_COUNT"
