@@ -13,7 +13,7 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     cd ..
     
     cd "${MANAGER_DIR}"
-    UPSTREAM_HASH=$(git log -n 1 --format="%H" -i --grep="ci skip" --grep="skip ci" --invert-grep -- . ":!website/" ":!docs/" ":!*.md" ":!.github/")
+    UPSTREAM_HASH=$(git log -n 1 --format="%H" -i --grep="ci skip" --grep="skip ci" --invert-grep -- manager/ kernel/)
     CALCULATED_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
     CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}")
     UPSTREAM_BRANCH="main"
@@ -71,7 +71,7 @@ else
     
     # FIX 4: Calculate Hash, Count, and Tag starting strictly from the pristine base commit
     set +o pipefail
-    UPSTREAM_HASH=$(git log --first-parent "${RAW_BASE}" --format="%H" -n 1 -- . ":!website/" ":!docs/" ":!*.md" ":!.github/")
+    UPSTREAM_HASH=$(git log -n 1 --first-parent "${RAW_BASE}" --format="%H" -i --grep="ci skip" --grep="skip ci" --invert-grep -- manager/ kernel/)
     set -o pipefail
     
     CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
@@ -101,15 +101,6 @@ if [ "$K_VER" = "6" ] && [ "$K_PATCH" -ge "12" ]; then
     fi
 else
     echo "  -> Kernel $K_VER.$K_PATCH detected. Legacy LSM string hook is perfectly valid."
-fi
-
-# ---------------------------------------------------------
-# SukiSU-Ultra Upstream Bug Fix: kernel_umount.c
-# ---------------------------------------------------------
-UMOUNT_FILE="common/drivers/kernelsu/feature/kernel_umount.c"
-if [ -f "$UMOUNT_FILE" ] && grep -q 'kernel_umount_feature_set' "$UMOUNT_FILE"; then
-    echo ">>> Patching undeclared kernel_umount_feature_set to NULL in SukiSU-Ultra..."
-    sed -i 's/kernel_umount_feature_set/NULL/g' "$UMOUNT_FILE"
 fi
 
 echo "  -> Target Tag: $CALCULATED_TAG"
