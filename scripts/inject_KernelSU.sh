@@ -13,7 +13,7 @@ if [ "${USE_DYNAMIC_TRANSPLANT}" == "true" ]; then
     cd ..
     
     cd "${MANAGER_DIR}"
-    UPSTREAM_HASH=$(git log -n 1 --format="%H" -i --grep="ci skip" --grep="skip ci" --invert-grep -- manager/ kernel/ userspace/ ":!*Cargo.lock" ":!*Cargo.toml")
+    UPSTREAM_HASH=$(git log -n 1 --format="%H" -i --grep="ci skip" --grep="skip ci" --grep="clippy" --invert-grep -- manager/ kernel/ userspace/ .github/workflows/ ":!*Cargo.lock" ":!*Cargo.toml")
     CALCULATED_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
     CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}")
     UPSTREAM_BRANCH="main"
@@ -79,7 +79,7 @@ else
     
     # FIX 4: Walk backward down the pristine mainline branch
     set +o pipefail
-    UPSTREAM_HASH=$(git log -n 1 --first-parent "${RAW_BASE}" --format="%H" -i --grep="ci skip" --grep="skip ci" --invert-grep -- manager/ kernel/ userspace/ ":!*Cargo.lock" ":!*Cargo.toml")
+    UPSTREAM_HASH=$(git log -n 1 --first-parent "${RAW_BASE}" --format="%H" -i --grep="ci skip" --grep="skip ci" --grep="clippy" --invert-grep -- manager/ kernel/ userspace/ .github/workflows/ ":!*Cargo.lock" ":!*Cargo.toml")
     set -o pipefail
 
     CALCULATED_COUNT=$(git rev-list --count "${UPSTREAM_HASH}" 2>/dev/null || echo "11950")
