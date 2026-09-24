@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# scripts/configure_kconfigs.sh
 set -euo pipefail
 
 WITH_CUSTOM=${WITH_CUSTOM:-false}

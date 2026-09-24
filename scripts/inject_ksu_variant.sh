@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# scripts/inject_ksu_variant.sh
 set -euo pipefail
 
 cd kernel_workspace
